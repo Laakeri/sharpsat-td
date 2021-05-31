@@ -1,6 +1,6 @@
 # SharpSAT-TD
 
-Submission to model counting competition 2021, unweighted and weighted tracks.
+Submission to model counting competition 2021, unweighted and weighted tracks by Tuukka Korhonen and Matti Järvisalo (University of Helsinki).
 SharpSAT-TD is based on [SharpSAT](https://github.com/marcthurley/sharpSAT), with the main new features being the use of tree decompositions in decision heuristics, new preprocessor, and directly supporting weighted model counting.
 See a detailed description in [description.pdf](https://github.com/Laakeri/sharpsat-td/blob/main/description.pdf).
 
