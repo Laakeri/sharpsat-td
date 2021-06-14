@@ -1019,7 +1019,9 @@ bool Oracle::Solve(const vector<Lit>& assumps, bool usecache) {
 		// UNSAT
 		if (assumps.size() == 1) {
 			bool ok = FreezeUnit(Neg(assumps[0]));
-			assert(ok);
+			if (!ok) {
+				assert(unsat);
+			}
 		} else {
 			assert(FalseByProp(assumps));
 		}
