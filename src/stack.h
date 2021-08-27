@@ -23,7 +23,7 @@ public:
   const unsigned literal_stack_ofs_ = 0;
 
   //  Solutioncount
-  T_num branch_model_count_[2] = {0,0};
+  T_num branch_model_count_[2] = {T_num::Zero(), T_num::Zero()};
   bool branch_found_unsat_[2] = {false,false};
 
   /// remaining Components
@@ -41,8 +41,7 @@ public:
   // in [unprocessed_components_end_, component_stack.size())
   unsigned unprocessed_components_end_ = 0;
 
-  double dec_weight = 1;
-  LogNum dec_weight_ln = (int)1;
+  T_num dec_weight = T_num::One();
 
   bool hasUnprocessedComponents() {
     assert(unprocessed_components_end_ >= remaining_components_ofs_);
@@ -97,11 +96,8 @@ public:
   }
 
   void includeSolution(const T_num &solutions);
-  void includeSolution(unsigned solutions);
 
-  bool branch_found_unsat() {
-    return branch_found_unsat_[active_branch_];
-  }
+  bool branch_found_unsat() const;
   void mark_branch_unsat() {
     branch_found_unsat_[active_branch_] = true;
   }
@@ -115,110 +111,31 @@ public:
   const T_num getTotalModelCount() const;
 };
 
-template <>
-inline void StackLevel<LogNum>::includeSolution(unsigned solutions) {
-  //cerr<<"includesolution_ln "<<solutions<<" "<<dec_weight.get()<<endl;
-  if (branch_found_unsat_[active_branch_]) {
-    assert(branch_model_count_[active_branch_] == 0);
-    return;
-  }
-  if (solutions == 0)
-    branch_found_unsat_[active_branch_] = true;
-  if (branch_model_count_[active_branch_] == 0) {
-    branch_model_count_[active_branch_] = dec_weight_ln * (int)solutions;
-  }
-  else {
-    branch_model_count_[active_branch_] *= solutions;
-  }
+template<typename T_num>
+inline bool StackLevel<T_num>::branch_found_unsat() const {
+  return branch_found_unsat_[active_branch_];
 }
-template <>
-inline void StackLevel<LogNum>::includeSolution(const LogNum &solutions) {
-  //cerr<<"includesolution_d "<<solutions<<" "<<dec_weight<<endl;
+
+
+template <typename T_num>
+inline void StackLevel<T_num>::includeSolution(const T_num &solutions) {
   if (branch_found_unsat_[active_branch_]) {
-    assert(branch_model_count_[active_branch_] == 0);
+    assert(branch_model_count_[active_branch_].IsAlgZero());
     return;
   }
-  if (solutions == 0)
+  if (solutions.IsAlgZero()) {
     branch_found_unsat_[active_branch_] = true;
-  if (branch_model_count_[active_branch_] == 0) {
-    branch_model_count_[active_branch_] = solutions * dec_weight_ln;
   }
-  else {
-    branch_model_count_[active_branch_] *= solutions;
-  }
-}
-template <>
-inline void StackLevel<double>::includeSolution(const double &solutions) {
-  //cerr<<"includesolution_d "<<solutions<<" "<<dec_weight<<endl;
-  if (branch_found_unsat_[active_branch_]) {
-    assert(branch_model_count_[active_branch_] == 0);
-    return;
-  }
-  if (solutions == 0)
-    branch_found_unsat_[active_branch_] = true;
-  if (branch_model_count_[active_branch_] == 0) {
+  if (branch_model_count_[active_branch_].IsAlgZero()) {
     branch_model_count_[active_branch_] = solutions * dec_weight;
   }
   else {
     branch_model_count_[active_branch_] *= solutions;
   }
 }
-template <>
-inline void StackLevel<double>::includeSolution(unsigned solutions) {
-  //cerr<<"includesolution_u "<<solutions<<" "<<dec_weight<<endl;
-  if (branch_found_unsat_[active_branch_]) {
-    assert(branch_model_count_[active_branch_] == 0);
-    return;
-  }
-  if (solutions == 0)
-    branch_found_unsat_[active_branch_] = true;
-  if (branch_model_count_[active_branch_] == 0) {
-    branch_model_count_[active_branch_] = (double)solutions * dec_weight;
-  }
-  else {
-    branch_model_count_[active_branch_] *= (double)solutions;
-  }
-}
 
-template <>
-inline void StackLevel<mpz_class>::includeSolution(const mpz_class &solutions) {
-  if (branch_found_unsat_[active_branch_]) {
-    assert(branch_model_count_[active_branch_] == 0);
-    return;
-  }
-  if (solutions == 0)
-    branch_found_unsat_[active_branch_] = true;
-  if (branch_model_count_[active_branch_] == 0)
-    branch_model_count_[active_branch_] = solutions;
-  else
-    branch_model_count_[active_branch_] *= solutions;
-}
-template <>
-inline void StackLevel<mpz_class>::includeSolution(unsigned solutions) {
-  if (branch_found_unsat_[active_branch_]) {
-    assert(branch_model_count_[active_branch_] == 0);
-    return;
-  }
-  if (solutions == 0)
-    branch_found_unsat_[active_branch_] = true;
-  if (branch_model_count_[active_branch_] == 0)
-    branch_model_count_[active_branch_] = solutions;
-  else
-    branch_model_count_[active_branch_] *= solutions;
-}
-
-template <>
-const inline LogNum StackLevel<LogNum>::getTotalModelCount() const {
-  return branch_model_count_[0] + branch_model_count_[1];
-}
-
-template <>
-const inline double StackLevel<double>::getTotalModelCount() const {
-  return branch_model_count_[0] + branch_model_count_[1];
-}
-
-template <>
-const inline mpz_class StackLevel<mpz_class>::getTotalModelCount() const {
+template <typename T_num>
+const inline T_num StackLevel<T_num>::getTotalModelCount() const {
   return branch_model_count_[0] + branch_model_count_[1];
 }
 

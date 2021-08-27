@@ -14,99 +14,212 @@
 #include <limits>
 #include <cassert>
 #include "primitive_types.h"
+#include <gmpxx.h>
+#include "mpfr/mpreal.h"
 using namespace std;
 
-struct LogNum {
+struct SDouble {
  public:
-  LogNum() {
-    n = -std::numeric_limits<double>::infinity();
+  SDouble() {
+    n = 0;
+    has = false;
   }
-  LogNum(double d) {
-    n = log10(d);
+  void Init(double d) {
+    assert(d != 0);
+    n = d;
+    has = true;
   }
-  LogNum(const LogNum& other) {
-    n = other.get();
+  SDouble(const SDouble& other) {
+    n = other.n;
+    has = other.has;
   }
-  LogNum(int d) {
-    n = log10((double)d);
-  }
-  LogNum(unsigned d) {
-    n = log10((double)d);
-  }
-  LogNum(LogNum&& other) {
-    n = other.get();
-  }
-  void set(double n_) {
-    n = n_;
-  }
-  bool operator==(int other) const {
-    return n == log10((double)other);
-  }
-  LogNum& operator=(const LogNum& other) {
-    n = other.get();
+  SDouble& operator=(const SDouble& other) {
+    n = other.n;
+    has = other.has;
     return *this;
   }
-  /*
-  LogNum& operator=(double other) {
-    n = log10(other);
-    return *this;
+  bool IsAlgZero() const {
+    return !has;
   }
-  LogNum& operator=(unsigned other) {
-    n = log10((double)other);
-    return *this;
-  }
-  LogNum& operator=(int other) {
-    n = log10((double)other);
-    return *this;
-  }*/
-  LogNum operator*(LogNum other) const {
-    double val = n + other.get();
-    LogNum ret((int)0);
-    ret.set(val);
+  SDouble operator*(SDouble other) const {
+    SDouble ret = other;
+    ret.n *= n;
+    ret.has &= has;
     return ret;
   }
-  LogNum operator+(LogNum other) const {
-    double ma = max(n, other.get());
-    double mi = min(n, other.get());
-    if (isinf(mi) && mi < 0) {
-      LogNum ret((int)0);
-      ret.set(ma);
-      return ret;
-    } else {
-      double diff = ma - mi;
-      if (diff > 60) {
-        LogNum ret((int)0);
-        ret.set(ma);
-        return ret;
-      } else {
-        double rat = pow((double)10, -diff);
-        assert(rat >= 0 && rat <= 1);
-        LogNum ret((int)0);
-        ret.set(log10((double)1+rat) + ma);
-        return ret;
-      }
-    }
+  SDouble operator+(SDouble other) const {
+    SDouble ret = other;
+    ret.n += n;
+    ret.has |= has;
+    return ret;
   }
-  LogNum& operator+=(const LogNum& other) {
-    LogNum t((int)0);
-    t.set(n);
-    LogNum r = t + other;
-    set(r.get());
+  SDouble& operator*=(const SDouble& other) {
+    n *= other.n;
+    has &= other.has;
     return *this;
   }
-  LogNum& operator*=(const LogNum& other) {
-    n += other.get();
+  SDouble& operator/=(const SDouble& other) {
+    assert(other.n != 0);
+    assert(other.has);
+    n /= other.n;
     return *this;
   }
-  LogNum& operator/=(const LogNum& other) {
-    n -= other.get();
-    return *this;
+  size_t InternalSize() const {
+    return 0;
   }
-  double get() const {
+  double Get() const {
     return n;
   }
+  static SDouble Zero() {
+    SDouble ret;
+    return ret;
+  }
+  static SDouble One() {
+    SDouble ret;
+    ret.n = 1;
+    ret.has = true;
+    return ret;
+  }
  private:
-  double n;
+  double n = 0;
+  bool has = false;
+};
+
+struct Smpr {
+ public:
+  Smpr() {
+    n = 0;
+    has = false;
+  }
+  void Init(double d) {
+    assert(d != 0);
+    n = d;
+    has = true;
+  }
+  Smpr(const Smpr& other) {
+    n = other.n;
+    has = other.has;
+  }
+  Smpr& operator=(const Smpr& other) {
+    n = other.n;
+    has = other.has;
+    return *this;
+  }
+  bool IsAlgZero() const {
+    return !has;
+  }
+  Smpr operator*(Smpr other) const {
+    Smpr ret = other;
+    ret.n *= n;
+    ret.has &= has;
+    return ret;
+  }
+  Smpr operator+(Smpr other) const {
+    Smpr ret = other;
+    ret.n += n;
+    ret.has |= has;
+    return ret;
+  }
+  Smpr& operator*=(const Smpr& other) {
+    n *= other.n;
+    has &= other.has;
+    return *this;
+  }
+  Smpr& operator/=(const Smpr& other) {
+    assert(other.n != 0);
+    assert(other.has);
+    n /= other.n;
+    return *this;
+  }
+  size_t InternalSize() const {
+    return 0;
+  }
+  mpfr::mpreal Get() const {
+    return n;
+  }
+  static Smpr Zero() {
+    Smpr ret;
+    return ret;
+  }
+  static Smpr One() {
+    Smpr ret;
+    ret.n = 1;
+    ret.has = true;
+    return ret;
+  }
+ private:
+  mpfr::mpreal n = 0;
+  bool has = false;
+};
+
+struct Smpz {
+ public:
+  Smpz() {
+    n = 0;
+    has = false;
+  }
+  void Init(double d) {
+    assert(d == 1 || d == -1);
+    n = (int)d;
+    has = true;
+  }
+  Smpz(const Smpz& other) {
+    n = other.n;
+    has = other.has;
+  }
+  Smpz& operator=(const Smpz& other) {
+    n = other.n;
+    has = other.has;
+    return *this;
+  }
+  bool IsAlgZero() const {
+    return !has;
+  }
+  Smpz operator*(Smpz other) const {
+    Smpz ret = other;
+    ret.n *= n;
+    ret.has &= has;
+    return ret;
+  }
+  Smpz operator+(Smpz other) const {
+    Smpz ret = other;
+    ret.n += n;
+    ret.has |= has;
+    return ret;
+  }
+  Smpz& operator*=(const Smpz& other) {
+    n *= other.n;
+    has &= other.has;
+    return *this;
+  }
+  Smpz& operator/=(const Smpz& other) {
+    assert(other.has);
+    if (other.n == -1) {
+      n = -n;
+    } else {
+      assert(other.n == 1);
+    }
+    return *this;
+  }
+  size_t InternalSize() const {
+    return n.get_mpz_t()->_mp_alloc * sizeof(mp_limb_t);
+  }
+  mpz_class Get() const {
+    return n;
+  }
+  static Smpz Zero() {
+    Smpz ret;
+    return ret;
+  }
+  static Smpz One() {
+    Smpz ret;
+    ret.n = 1;
+    ret.has = true;
+    return ret;
+  }
+ private:
+  mpz_class n = 0;
+  bool has = false;
 };
 
 #define INVALID_DL -1

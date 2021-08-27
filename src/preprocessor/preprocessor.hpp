@@ -10,7 +10,6 @@ class Preprocessor {
  public:
  	Instance Preprocess(Instance ins, const string& techniques);
  	Instance Preprocess(int vars_, vector<vector<Lit>> clauses_, string techniques);
- 	//vector<Instance> Components(const Instance& ins) const;
  	int FreeVars() const;
  	void SetMaxGTime(double time);
  	void SetMaxSparsTime(double time);
@@ -65,6 +64,8 @@ inline bool ValidTechniques(const string& techniques, bool weighted) {
 			      || c == 'E') { // equivalence merging
 			// ok
 		} else if (c == 'G' && !weighted) { // B+E
+			// ok
+		} else if (c == 'I' && !weighted) { // Inc B+E
 			// ok
 		} else {
 			return false;

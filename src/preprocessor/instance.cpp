@@ -1,6 +1,7 @@
 #include <istream>
 #include <fstream>
 #include <cctype>
+#include <iomanip>
 
 #include "instance.hpp"
 #include "utils.hpp"
@@ -23,57 +24,6 @@ vector<string> Tokens(string t) {
 	return ret;
 }
 } // namespace
-
-Lit Instance::RecConstruct(vector<Lit> clause) {
-	if (clause.size() == 1) return clause[0];
-	assert(clause.size() >= 2);
-	vector<vector<Lit>> cps(2);
-	for (int i = 0; i < (int)clause.size(); i++) {
-		cps[i%2].push_back(clause[i]);
-	}
-	Lit l1 = RecConstruct(cps[0]);
-	Lit l2 = RecConstruct(cps[1]);
-	Var nv = AddVar();
-	// Positive lits imply positive indicator
-	AddClause({Neg(l1), PosLit(nv)});
-	AddClause({Neg(l2), PosLit(nv)});
-	// Negative lits imply negative indicator
-	AddClause({l1, l2, NegLit(nv)});
-	return PosLit(nv);
-}
-
-void Instance::ConstructClause(vector<Lit> clause) {
-	assert(!clause.empty());
-	for (Lit l : clause) {
-		assert(1 <= VarOf(l) && VarOf(l) <= vars);
-	}
-	SortAndDedup(clause);
-	for (size_t i = 1; i < clause.size(); i++) {
-		if (VarOf(clause[i-1]) == VarOf(clause[i])) {
-			// Tautology
-			return;
-		}
-	}
-	if (clause.size() <= 3) {
-		AddClause(clause);
-	} else {
-		int head_len = 2;
-		if (clause.size()%3 == 0 || clause.size() >= 6) {
-			head_len = 3;
-		}
-		vector<vector<Lit>> cps(head_len);
-		for (int i = 0; i < (int)clause.size(); i++) {
-			cps[i%head_len].push_back(clause[i]);
-		}
-		vector<Lit> new_cls;
-		for (int i = 0; i < head_len; i++) {
-			assert(cps[i].size() >= 1);
-			Lit l = RecConstruct(cps[i]);
-			new_cls.push_back(l);
-		}
-		AddClause(new_cls);
-	}
-}
 
 Var Instance::AddVar() {
 	return ++vars;
@@ -195,18 +145,11 @@ Instance::Instance(string input_file, bool weighted_) {
 	}
 	if (weighted) {
 		for (int v = 1; v <= vars; v++) {
-			assert(weights[PosLit(v)] >= 0 && weights[NegLit(v)] >= 0);
 			if (weights[PosLit(v)] == 0) {
 				AddClause({NegLit(v)});
 			}
 			if (weights[NegLit(v)] == 0) {
 				AddClause({PosLit(v)});
-			}
-			if (weights[PosLit(v)] == 1 && weights[NegLit(v)] == 1) {
-				cout<<"c o WARNING: No weights for variable "<<v<<" specified, assuming weight 1 for both literals."<<endl;
-			}
-			if (abs(weights[PosLit(v)] + weights[NegLit(v)] - 1) > 0.00000001) {
-				cout<<"c o WARNING: Sum of weights for variable "<<v<<" not equal to 1."<<endl;
 			}
 		}
 	}

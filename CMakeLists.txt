@@ -22,22 +22,27 @@ SET(CMAKE_C_FLAGS "-std=c99 -Wall -msse4.1 -mpclmul")
 
 find_library(GMP_LIB gmp)
 find_library(GMPXX_LIB gmpxx)
+find_library(MPFR_LIB mpfr)
 
-add_subdirectory(src)
 add_subdirectory(flowcutter)
 
-add_executable (sharpSATU src/main.cpp)
-if(STATIC)
-SET_TARGET_PROPERTIES (sharpSATU PROPERTIES LINK_SEARCH_START_STATIC 1)
-endif(STATIC)
-target_link_libraries (sharpSATU ${GMPXX_LIB} ${GMP_LIB} libsharpSAT)
+SET(SOURCES 
+	src/preprocessor/graph.cpp 
+	src/preprocessor/instance.cpp
+	src/preprocessor/oracle.cpp
+	src/preprocessor/preprocessor.cpp
+	src/preprocessor/subsumer.cpp
+	src/preprocessor/treewidth.cpp
+	src/preprocessor/twpp.cpp
+	src/decomposition.cpp
+	src/clhash/clhash.c
+)
 
-add_executable (sharpSATW src/main.cpp)
+add_executable (sharpSAT src/main.cpp ${SOURCES})
 if(STATIC)
-SET_TARGET_PROPERTIES (sharpSATW PROPERTIES LINK_SEARCH_START_STATIC 1)
+SET_TARGET_PROPERTIES (sharpSAT PROPERTIES LINK_SEARCH_START_STATIC 1)
 endif(STATIC)
-SET_TARGET_PROPERTIES(sharpSATW PROPERTIES COMPILE_FLAGS "-DWEIGHTED")
-target_link_libraries (sharpSATW ${GMPXX_LIB} ${GMP_LIB} libsharpSAT)
+target_link_libraries (sharpSAT ${MPFR_LIB} ${GMPXX_LIB} ${GMP_LIB})
 
 add_executable (flow_cutter_pace17 flowcutter/pace.cpp)
 if(STATIC)

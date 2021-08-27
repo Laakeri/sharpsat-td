@@ -280,7 +280,6 @@ Instance Preprocessor::MapBack() {
 		ret.weighted = true;
 		ret.weights.resize(vars*2+2);
 		ret.weight_factor = 1;
-		ret.weight_factor_log = 0;
 		for (Var v = 1; v <= vars; v++) {
 			Var ov = var_map[v];
 			assert(ov <= orig_vars && ov >= 1);
@@ -303,16 +302,13 @@ Instance Preprocessor::MapBack() {
 				assert(!used[v]);
 				if (assign[v] == 1) {
 					ret.weight_factor *= weights[PosLit(v)];
-					ret.weight_factor_log += log10(weights[PosLit(v)]);
 				} else if (assign[v] == 2) {
 					ret.weight_factor *= weights[NegLit(v)];
-					ret.weight_factor_log += log10(weights[NegLit(v)]);
 				} else {
 					assert(0);
 				}
 			} else if (!used[v]) {
 				ret.weight_factor *= (weights[PosLit(v)] + weights[NegLit(v)]);
-				ret.weight_factor_log += log10(weights[PosLit(v)] + weights[NegLit(v)]);
 			}
 		}
 	}

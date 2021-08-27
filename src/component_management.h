@@ -28,7 +28,7 @@ class ComponentManager {
 public:
   ComponentManager(SolverConfiguration &config, DataAndStatistics<T_num> &statistics,
         LiteralIndexedVector<TriValue> & lit_values,
-        LiteralIndexedVector<double> & lit_weights) :
+        LiteralIndexedVector<T_num> & lit_weights) :
         config_(config), statistics_(statistics), cache_(statistics),
         ana_(statistics,lit_values,lit_weights) {
   }
@@ -41,8 +41,7 @@ public:
   }
 
   void cacheModelCountOf(unsigned stack_comp_id, const T_num &value) {
-    if (config_.perform_component_caching)
-      cache_.storeValueOf(component_stack_[stack_comp_id]->id(), value);
+    cache_.storeValueOf(component_stack_[stack_comp_id]->id(), value);
   }
 
   Component & superComponentOf(StackLevel<T_num> &lev) {
@@ -120,12 +119,12 @@ bool ComponentManager<T_num>::findNextRemainingComponentOf(StackLevel<T_num> &to
       return true;
     // if no component remains
     // make sure, at least that the current branch is considered SAT
-    top.includeSolution((unsigned)1);
+    top.includeSolution(T_num::One());
     return false;
   }
 
 template <class T_num>
-void ComponentManager<T_num>::recordRemainingCompsFor(StackLevel<T_num> &top, const Hasher& hasher) {
+inline void ComponentManager<T_num>::recordRemainingCompsFor(StackLevel<T_num> &top, const Hasher& hasher) {
    Component & super_comp = superComponentOf(top);
    unsigned new_comps_start_ofs = component_stack_.size();
 
@@ -150,7 +149,6 @@ void ComponentManager<T_num>::recordRemainingCompsFor(StackLevel<T_num> &top, co
    top.set_unprocessed_components_end(component_stack_.size());
    sortComponentStackRange(new_comps_start_ofs, component_stack_.size());
 }
-
 
 template<class T_num>
 void ComponentManager<T_num>::initialize(LiteralIndexedVector<Literal> & literals,

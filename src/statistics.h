@@ -123,15 +123,11 @@ public:
     sys_overhead_sum_bytes_cached_components_ += ccomp.sys_overhead_SizeInBytes();
     sys_overhead_overall_bytes_components_stored_ += ccomp.sys_overhead_SizeInBytes();
 
-
-    sum_bytes_pure_cached_component_data_ += ccomp.data_only_byte_size();
-    overall_bytes_pure_stored_component_data_ += ccomp.data_only_byte_size();
   }
   void incorporate_cache_erase(CacheableComponent<T_num> &ccomp){
       sum_bytes_cached_components_ -= ccomp.SizeInBytes();
       sum_size_cached_components_ -= ccomp.num_variables();
       num_cached_components_--;
-      sum_bytes_pure_cached_component_data_ -= ccomp.data_only_byte_size();
 
       sys_overhead_sum_bytes_cached_components_ -= ccomp.sys_overhead_SizeInBytes();
   }
@@ -143,7 +139,7 @@ public:
   unsigned long cache_MB_memory_usage() {
       return cache_bytes_memory_usage() / 1000000;
   }
-  T_num final_solution_count_ = 0;
+  T_num final_solution_count_ = T_num::Zero();
 
   double implicitBCP_miss_rate() {
       if(num_failed_literal_tests_ == 0) return 0.0;
@@ -181,9 +177,6 @@ public:
     else
       num_long_clauses_++;
   }
-
-  void print_final_solution_count();
-  void writeToFile(const string & file_name);
 
   void printShort();
 
@@ -236,7 +229,6 @@ public:
     return sum_cache_hit_sizes_ / (long double) num_cache_hits_;
   }
 
-  string final_count_str();
 };
 
 #include <iostream>
@@ -246,60 +238,10 @@ public:
 
 using namespace std;
 
-template<>
-inline void DataAndStatistics<LogNum>::set_final_solution_count(const LogNum &count) {
+template<typename T_num>
+inline void DataAndStatistics<T_num>::set_final_solution_count(const T_num &count) {
+  assert(num_variables_ == num_used_variables_);
   final_solution_count_ = count;
-  for (int i = 0; i < (int)(num_variables_ - num_used_variables_); i++) {
-    final_solution_count_ *= (int)2;
-  }
-}
-
-template<>
-inline void DataAndStatistics<double>::set_final_solution_count(const double &count) {
-  final_solution_count_ = count * pow((double)2, (double)(num_variables_ - num_used_variables_));
-}
-
-template<>
-inline void DataAndStatistics<mpz_class>::set_final_solution_count(const mpz_class &count) {
-  mpz_mul_2exp(final_solution_count_.get_mpz_t (),count.get_mpz_t (), num_variables_ - num_used_variables_);
-}
-
-template<>
-inline string DataAndStatistics<double>::final_count_str() {
-  stringstream ss;
-  ss<<setprecision(18);
-  ss<<final_solution_count_;
-  string ret;
-  ss>>ret;
-  return ret;
-}
-
-template<>
-inline string DataAndStatistics<mpz_class>::final_count_str() {
-  return final_solution_count_.get_str();
-}
-
-template <class T_num>
-void DataAndStatistics<T_num>::print_final_solution_count() {
-  cout << final_count_str();
-}
-
-template <class T_num>
-void DataAndStatistics<T_num>::writeToFile(const string & file_name) {
-  ofstream out(file_name, ios_base::app);
-  unsigned pos = input_file_.find_last_of("/\\");
-  out << "<tr>" << endl;
-  out << "<td>" << input_file_.substr(pos + 1) << "</td>" << endl;
-  out << "<td>" << num_original_variables_ << "</td>" << endl;
-  out << "<td>" << num_original_clauses_ << "</td>" << endl;
-  out << "<td>" << num_decisions_ << "</td>" << endl;
-  out << "<td>" << time_elapsed_ << "</td>" << endl;
-
-  string s = final_count_str();
-  if (final_solution_count_ == 0)
-    s = "UNSAT";
-  out << "<td>" << s << "</td>" << endl;
-  out << "</tr>" << endl;
 }
 
 template <class T_num>

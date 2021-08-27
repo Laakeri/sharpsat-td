@@ -27,17 +27,13 @@ enum retStateT {
 	EXIT, RESOLVED, PROCESS_COMPONENT, BACKTRACK
 };
 
-
-
 class StopWatch {
 public:
 
-  StopWatch();
-
-  bool timeBoundBroken() {
-    timeval actual_time;
-    gettimeofday(&actual_time, NULL);
-    return actual_time.tv_sec - start_time_.tv_sec > time_bound_;
+  StopWatch() {
+	  interval_length_.tv_sec = 60;
+	  gettimeofday(&last_interval_start_, NULL);
+	  start_time_ = stop_time_ = last_interval_start_;
   }
 
   bool start() {
@@ -66,16 +62,9 @@ public:
     return false;
   }
 
-  void setTimeBound(long int seconds) {
-    time_bound_ = seconds;
-  }
-  long int getTimeBound();
-
 private:
   timeval start_time_;
   timeval stop_time_;
-
-  long int time_bound_;
 
   timeval interval_length_;
   timeval last_interval_start_;
@@ -83,15 +72,29 @@ private:
   // if we have started and then stopped the watch, this returns
   // the elapsed time
   // otherwise, time elapsed from start_time_ till now is returned
-  timeval getElapsedTime();
+  timeval getElapsedTime() {
+	  timeval r;
+	  timeval other_time = stop_time_;
+	  if (stop_time_.tv_sec == start_time_.tv_sec
+	      && stop_time_.tv_usec == start_time_.tv_usec)
+	    gettimeofday(&other_time, NULL);
+	  long int ad = 0;
+	  long int bd = 0;
+
+	  if (other_time.tv_usec < start_time_.tv_usec) {
+	    ad = 1;
+	    bd = 1000000;
+	  }
+	  r.tv_sec = other_time.tv_sec - ad - start_time_.tv_sec;
+	  r.tv_usec = other_time.tv_usec + bd - start_time_.tv_usec;
+	  return r;
+  }
 };
 
 template<class T_num>
 class Solver: public Instance<T_num> {
 public:
-	Solver(std::mt19937_64& gen) : hasher_(gen) {
-		stopwatch_.setTimeBound(config_.time_bound_seconds);
-	}
+	Solver(std::mt19937_64& gen) : hasher_(gen) {}
 
 	T_num solve(const sspp::Instance& pp_ins, const sspp::TreeDecomposition& tdec);
 
@@ -101,9 +104,6 @@ public:
 
 	DataAndStatistics<T_num> &statistics() {
 	        return Instance<T_num>::statistics_;
-	}
-	void setTimeBound(long int i) {
-		stopwatch_.setTimeBound(i);
 	}
 
 private:
@@ -140,11 +140,11 @@ private:
 	bool bcp();
 
 
-	 void decayActivitiesOf(Component & comp) {
-	   for (auto it = comp.varsBegin(); *it != varsSENTINEL; it++) {
-	          Instance<T_num>::literal(LiteralID(*it,true)).activity_score_ *=0.5;
-	          Instance<T_num>::literal(LiteralID(*it,false)).activity_score_ *=0.5;
-	       }
+	void decayActivitiesOf(Component & comp) {
+		for (auto it = comp.varsBegin(); *it != varsSENTINEL; it++) {
+	  	Instance<T_num>::literal(LiteralID(*it,true)).activity_score_ *=0.5;
+	    Instance<T_num>::literal(LiteralID(*it,false)).activity_score_ *=0.5;
+	  }
 	}
 	///  this method performs Failed literal tests online
 	bool implicitBCP();
@@ -303,66 +303,40 @@ private:
 		return assertion_level_;
 	}
 
+	bool Weighted() const {
+		return !Instance<T_num>::lit_weights_.empty();
+	}
+
 	/////////////////////////////////////////////
 	//  END conflict analysis
 	/////////////////////////////////////////////
 };
 
-template<>
-inline bool Solver<LogNum>::setLiteralIfFree(LiteralID lit,
+template<typename T_num>
+inline bool Solver<T_num>::setLiteralIfFree(LiteralID lit,
 		Antecedent ant) {
-	if (Instance<LogNum>::literal_values_[lit] != X_TRI)
+	if (Instance<T_num>::literal_values_[lit] != X_TRI)
 		return false;
-	if (stack_.size() >= 2 && Instance<LogNum>::lit_weights_.size() > 0) {
-		if (dec_cands_[stack_.size()][lit.var()] == dec_cands_[stack_.size()][0]) {
-			Instance<LogNum>::lit_mul_[lit.var()] = true;
-			stack_.top().dec_weight_ln *= Instance<LogNum>::lit_weights_[lit];
+	if (Weighted()) {
+		if (stack_.size() >= 2 && Instance<T_num>::lit_weights_.size() > 0) {
+			if (Instance<T_num>::dec_cands_[stack_.size()][lit.var()] == Instance<T_num>::dec_cands_[stack_.size()][0]) {
+				Instance<T_num>::lit_mul_[lit.var()] = true;
+				stack_.top().dec_weight *= Instance<T_num>::lit_weights_[lit];
+			}
 		}
 	}
 	return setLiteralIfFreeBase(lit, ant);
 }
 
-template<>
-inline bool Solver<double>::setLiteralIfFree(LiteralID lit,
-		Antecedent ant) {
-	if (Instance<double>::literal_values_[lit] != X_TRI)
-		return false;
-	if (stack_.size() >= 2 && Instance<double>::lit_weights_.size() > 0) {
-		if (dec_cands_[stack_.size()][lit.var()] == dec_cands_[stack_.size()][0]) {
-			Instance<double>::lit_mul_[lit.var()] = true;
-			stack_.top().dec_weight *= Instance<double>::lit_weights_[lit];
+template<typename T_num>
+inline void Solver<T_num>::unsetLiteral(LiteralID lit) {
+	if (Weighted()) {
+		if (stack_.size() >= 2 && Instance<T_num>::lit_mul_[lit.var()]) {
+			stack_.top().dec_weight /= Instance<T_num>::lit_weights_[lit];
 		}
+		Instance<T_num>::lit_mul_[lit.var()] = false;
 	}
-	return setLiteralIfFreeBase(lit, ant);
-}
-
-template<>
-inline bool Solver<mpz_class>::setLiteralIfFree(LiteralID lit,
-		Antecedent ant) {
-	return setLiteralIfFreeBase(lit, ant);
-}
-
-template<>
-inline void Solver<LogNum>::unsetLiteral(LiteralID lit) {
-	if (stack_.size() >= 2 && Instance<LogNum>::lit_weights_.size() > 0 && Instance<LogNum>::lit_mul_[lit.var()]) {
-		stack_.top().dec_weight_ln /= Instance<LogNum>::lit_weights_[lit];
-	}
-	Instance<LogNum>::lit_mul_[lit.var()] = false;
-	Instance<LogNum>::unSet(lit);
-}
-
-template<>
-inline void Solver<double>::unsetLiteral(LiteralID lit) {
-	if (stack_.size() >= 2 && Instance<double>::lit_weights_.size() > 0 && Instance<double>::lit_mul_[lit.var()]) {
-		stack_.top().dec_weight /= Instance<double>::lit_weights_[lit];
-	}
-	Instance<double>::lit_mul_[lit.var()] = false;
-	Instance<double>::unSet(lit);
-}
-
-template<>
-inline void Solver<mpz_class>::unsetLiteral(LiteralID lit) {
-	Instance<mpz_class>::unSet(lit);
+	Instance<T_num>::unSet(lit);
 }
 
 template <class T_num>
@@ -381,9 +355,6 @@ void Solver<T_num>::print(vector<unsigned> &vec) {
 
 template <class T_num>
 bool Solver<T_num>::simplePreProcess() {
-
-	if (!config_.perform_pre_processing)
-		return true;
 	assert(literal_stack_.size() == 0);
 	unsigned start_ofs = 0;
 //BEGIN process unit clauses
@@ -472,6 +443,7 @@ T_num Solver<T_num>::solve(const sspp::Instance& pp_ins, const sspp::TreeDecompo
 	Instance<T_num>::createfromPPIns(pp_ins);
 	initStack(Instance<T_num>::num_variables());
 
+	// Keep simplepreprocess here just to not break any invariant. Should be cheap.
 	bool notfoundUNSAT = simplePreProcess();
 	cout<<"c o SharpSAT loaded"<<endl;
 
@@ -494,7 +466,7 @@ T_num Solver<T_num>::solve(const sspp::Instance& pp_ins, const sspp::TreeDecompo
 
 	} else {
 		Instance<T_num>::statistics_.exit_state_ = SUCCESS;
-		Instance<T_num>::statistics_.set_final_solution_count(0);
+		Instance<T_num>::statistics_.set_final_solution_count(T_num::Zero());
 	}
 	stopwatch_.stop();
 	Instance<T_num>::statistics_.time_elapsed_ = stopwatch_.getElapsedSeconds();
@@ -513,8 +485,6 @@ SOLVER_StateT Solver<T_num>::countSAT() {
 		while (comp_manager_.findNextRemainingComponentOf(stack_.top(), hasher_)) {
 			//debugStack();
 			decideLiteral();
-			if (stopwatch_.timeBoundBroken())
-				return TIMEOUT;
 			if (stopwatch_.interval_tick())
 				printOnlineStats();
 			//debugStack();

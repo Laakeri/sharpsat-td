@@ -12,10 +12,7 @@
 
 #include "statistics.h"
 #include "component_types/component.h"
-#include "component_types/base_packed_component.h"
 #include "component_types/component_archetype.h"
-
-
 
 #include <vector>
 #include <cmath>
@@ -30,7 +27,7 @@ class AltComponentAnalyzer {
 public:
 	AltComponentAnalyzer(DataAndStatistics<T_num> &statistics,
         LiteralIndexedVector<TriValue> & lit_values,
-        LiteralIndexedVector<double> & lit_weights) :
+        const LiteralIndexedVector<T_num> & lit_weights) :
         statistics_(statistics), literal_values_(lit_values), lit_weights_(lit_weights) {
   }
 
@@ -131,12 +128,19 @@ private:
   // in one contiguous chunk of memory
   vector<unsigned> unified_variable_links_lists_pool_;
 
-
   vector<unsigned> variable_link_list_offsets_;
 
   LiteralIndexedVector<TriValue> & literal_values_;
 
-  LiteralIndexedVector<double> & lit_weights_;
+  const LiteralIndexedVector<T_num> & lit_weights_;
+
+  inline T_num LitWeight(const LiteralID lit) {
+    if (lit_weights_.empty()) {
+      return T_num::One();
+    } else {
+      return lit_weights_[lit];
+    }
+  }
 
   vector<unsigned> var_frequency_scores_;
 
@@ -214,44 +218,6 @@ private:
       archetype_.setClause_seen(clID,all_lits_active);
     }
   }
-
-
-//  void searchThreeClause(VariableIndex vt, ClauseIndex clID, LiteralID * pstart_cls){
-//      auto itVEnd = search_stack_.end();
-//      bool all_lits_active = true;
-//      // LiteralID * pstart_cls = reinterpret_cast<LiteralID *>(p + 1 + *(p+1));
-//      for (auto itL = pstart_cls; itL != pstart_cls+2; itL++) {
-//        assert(itL->var() <= max_variable_id_);
-//        if(archetype_.var_nil(itL->var())){
-//          assert(!isActive(*itL));
-//          all_lits_active = false;
-//          if (isResolved(*itL))
-//            continue;
-//          //BEGIN accidentally entered a satisfied clause: undo the search process
-//          while (search_stack_.end() != itVEnd) {
-//            assert(search_stack_.back() <= max_variable_id_);
-//            archetype_.setVar_in_sup_comp_unseen(search_stack_.back());
-//            search_stack_.pop_back();
-//          }
-//          archetype_.setClause_nil(clID);
-//          while(itL != pstart_cls - 1)
-//            if(isActive(*(--itL)))
-//              var_frequency_scores_[itL->var()]--;
-//          //END accidentally entered a satisfied clause: undo the search process
-//          break;
-//        } else {
-//          assert(isActive(*itL));
-//          var_frequency_scores_[itL->var()]++;
-//          if(isUnseenAndActive(itL->var()))
-//            setSeenAndStoreInSearchStack(itL->var());
-//        }
-//      }
-//
-//      if (!archetype_.clause_nil(clID)){
-//        var_frequency_scores_[vt]++;
-//        archetype_.setClause_seen(clID,all_lits_active);
-//      }
-//    }
 };
 
 
@@ -355,84 +321,14 @@ void AltComponentAnalyzer<T_num>::initialize(LiteralIndexedVector<Literal> & lit
 
 }
 
-
-//void AltComponentAnalyzer::recordComponentOf(const VariableIndex var) {
-//
-//  search_stack_.clear();
-//  setSeenAndStoreInSearchStack(var);
-//
-//  for (auto vt = search_stack_.begin(); vt != search_stack_.end(); vt++) {
-//    //BEGIN traverse binary clauses
-//    assert(isActive(*vt));
-//    unsigned *p = beginOfLinkList(*vt);
-//    for (; *p; p++) {
-//      if(isUnseenAndActive(*p)){
-//        setSeenAndStoreInSearchStack(*p);
-//        var_frequency_scores_[*p]++;
-//        var_frequency_scores_[*vt]++;
-//      }
-//    }
-//    //END traverse binary clauses
-//    auto s = p;
-//    for ( p++; *p ; p+=3) {
-////      if(archetype_.clause_unseen_in_sup_comp(*p)){
-////        LiteralID * pstart_cls = reinterpret_cast<LiteralID *>(p + 1);
-////        searchThreeClause(*vt,*p, pstart_cls);
-////      }
-//    }
-//    //END traverse ternary clauses
-//
-//    for (p++; *p ; p +=2) {
-//      if(archetype_.clause_unseen_in_sup_comp(*p)){
-//        LiteralID * pstart_cls = reinterpret_cast<LiteralID *>(p + 1 + *(p+1));
-//        searchClause(*vt,*p, pstart_cls);
-//      }
-//    }
-//
-//    for ( s++; *s ; s+=3) {
-//          if(archetype_.clause_unseen_in_sup_comp(*s)){
-//            LiteralID * pstart_cls = reinterpret_cast<LiteralID *>(s + 1);
-//            searchThreeClause(*vt,*s, pstart_cls);
-//          }
-//        }
-//  }
-//}
-
-template<>
-inline bool AltComponentAnalyzer<LogNum>::exploreRemainingCompOf(VariableIndex v) {
+template<typename T_num>
+inline bool AltComponentAnalyzer<T_num>::exploreRemainingCompOf(VariableIndex v) {
   assert(archetype_.var_unseen_in_sup_comp(v));
   recordComponentOf(v);
 
   if (search_stack_.size() == 1) {
-    LogNum iw = lit_weights_[LiteralID(v, true)] + lit_weights_[LiteralID(v, false)];
+    T_num iw = LitWeight(LiteralID(v, true)) + LitWeight(LiteralID(v, false));
     archetype_.stack_level().includeSolution(iw);
-    archetype_.setVar_in_other_comp(v);
-    return false;
-  }
-  return true;
-}
-
-template<>
-inline bool AltComponentAnalyzer<double>::exploreRemainingCompOf(VariableIndex v) {
-  assert(archetype_.var_unseen_in_sup_comp(v));
-  recordComponentOf(v);
-
-  if (search_stack_.size() == 1) {
-    double iw = lit_weights_[LiteralID(v, true)] + lit_weights_[LiteralID(v, false)];
-    archetype_.stack_level().includeSolution(iw);
-    archetype_.setVar_in_other_comp(v);
-    return false;
-  }
-  return true;
-}
-
-template<>
-inline bool AltComponentAnalyzer<mpz_class>::exploreRemainingCompOf(VariableIndex v) {
-  assert(archetype_.var_unseen_in_sup_comp(v));
-  recordComponentOf(v);
-
-  if (search_stack_.size() == 1) {
-    archetype_.stack_level().includeSolution((unsigned)2);
     archetype_.setVar_in_other_comp(v);
     return false;
   }

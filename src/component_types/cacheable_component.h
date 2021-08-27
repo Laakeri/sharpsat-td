@@ -12,50 +12,79 @@
 #include <vector>
 
 #include "../primitive_types.h"
-
-#include "difference_packed_component.h"
-//#include "simple_unpacked_component.h"
-
+#include "../hasher.h"
+#include "component.h"
 
 using namespace std;
 
-#define NIL_ENTRY 0
-
-class Component;
-
 template<class T_num>
-class ComponentArchetype;
-
-
-// GenericCacheableComponent Adds Structure to PackedComponent that is
-// necessary to store it in the cache
-// namely, the descendant tree structure that
-// allows for the removal of cache pollutions
-
-template< class T_Component>
-class GenericCacheableComponent: public T_Component {
+class CacheableComponent {
 public:
-  GenericCacheableComponent() {
+  CacheableComponent() {
   }
 
-  GenericCacheableComponent(Component &comp, const Hasher& hasher) :
-      T_Component(comp, hasher) {
+  CacheableComponent(const Component &comp, const Hasher& hasher) {
+    num_variables_ = comp.num_variables();
+    clhashkey_ = hasher.Hash(comp.RawData());
+  }
+
+  unsigned num_variables() const{
+    return num_variables_;
+  }
+
+  bool equals(const CacheableComponent &comp) const {
+    return clhashkey_ == comp.clhashkey();
+  }
+
+  HashType clhashkey() const {
+    return clhashkey_;
+  }
+
+  unsigned hashkey() {
+    return clhashkey_[0];
+  }
+
+  unsigned creation_time() {
+    return creation_time_;
+  }
+  
+  const T_num &model_count() const {
+    return model_count_;
+  }
+
+  void set_creation_time(unsigned time) {
+    creation_time_ = time;
+  }
+
+  void set_model_count(const T_num &rn, unsigned time) {
+    model_count_ = rn;
+    length_solution_period_and_flags_ = (time - creation_time_) | (length_solution_period_and_flags_ & 1);
+  }
+
+  bool modelCountFound(){
+    return (length_solution_period_and_flags_ >> 1);
+  }
+
+  // a cache entry is deletable
+  // only if it is not connected to an active
+  // component in the component stack
+  
+  bool isDeletable() const {
+    return length_solution_period_and_flags_ & 1;
+  }
+
+  void set_deletable() {
+    length_solution_period_and_flags_ |= 1;
   }
 
   unsigned long SizeInBytes() const {
-    return sizeof(GenericCacheableComponent<T_Component>)
-        + T_Component::raw_data_byte_size();
+    return sizeof(CacheableComponent) + model_count_.InternalSize();
   }
 
-  // the 48 = 16*3 in overhead stems from the three parts of the component
-  // being dynamically allocated (i.e. the GenericCacheableComponent itself,
-  // the data_ and the model_count data
+  // TODO make this correct?
   unsigned long sys_overhead_SizeInBytes() const {
-      return sizeof(GenericCacheableComponent<T_Component>)
-          + T_Component::sys_overhead_raw_data_byte_size()
-         // + 24;
-          +32;
-    }
+    return sizeof(CacheableComponent) + model_count_.InternalSize() + 48;
+  }
 
   // BEGIN Cache Pollution Management
 
@@ -89,9 +118,19 @@ public:
   }
 
 private:
+  HashType clhashkey_;
+  unsigned num_variables_ = 0;
 
+  T_num model_count_;
+
+  unsigned creation_time_ = 1;
+  // this is:  length_solution_period = length_solution_period_and_flags_ >> 1
+  // length_solution_period == 0 means unsolved
+  // and the first bit is "delete_permitted"
+  unsigned length_solution_period_and_flags_ = 0;
+
+  // Cache stuff
   CacheEntryID next_bucket_element_ = 0;
-
   // theFather and theDescendants:
   // each CCacheEntry is a Node in a tree which represents the relationship
   // of the components stored
@@ -100,15 +139,6 @@ private:
   CacheEntryID next_sibling_ = 0;
 
 };
-
-
-template <class T_num>
-using CacheableComponent = GenericCacheableComponent<DifferencePackedComponent<T_num>>;
-//typedef GenericCacheableComponent<DifferencePackedComponent> CacheableComponent;
-//typedef GenericCacheableComponent<SimplePackedComponent> CacheableComponent;
-
-
-
 
 
 #endif /* CACHEABLE_COMPONENT_H_ */

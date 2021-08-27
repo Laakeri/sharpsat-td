@@ -5,6 +5,7 @@
 
 #include "utils.hpp"
 #include "graph.hpp"
+#include "../mpfr/mpreal.h"
 
 namespace sspp {
 struct Instance {
@@ -12,7 +13,6 @@ struct Instance {
 	Instance(int vars_);
 	Instance(int vars_, vector<vector<Lit>> clauses_);
 
-	void ConstructClause(vector<Lit> clause);
 	Var AddVar();
 	void AddClause(vector<Lit> clause);
 	void AddLearnedClause(vector<Lit> clause);
@@ -30,8 +30,8 @@ struct Instance {
 	vector<vector<Lit>> learned_clauses;
 
 	bool weighted = false;
-	double weight_factor = 1;
-	double weight_factor_log = 0;
+	mpfr::mpreal weight_factor = 1;
+
   vector<double> weights;
   int total_lits = 0;
  private:

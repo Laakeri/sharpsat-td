@@ -52,6 +52,7 @@ public:
 	using vector<_T>::size;
 	using vector<_T>::clear;
 	using vector<_T>::push_back;
+	using vector<_T>::empty;
 };
 
 #endif /* CONTAINERS_H_ */

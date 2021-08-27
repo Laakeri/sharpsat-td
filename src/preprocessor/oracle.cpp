@@ -1013,9 +1013,7 @@ bool Oracle::Solve(const vector<Lit>& assumps, bool usecache) {
 		if (usecache) {
 			AddSolToCache();
 		}
-		//cerr<<"SAT"<<endl;
 	} else {
-		//cerr<<"UNSAT"<<endl;
 		// UNSAT
 		if (assumps.size() == 1) {
 			bool ok = FreezeUnit(Neg(assumps[0]));
@@ -1153,8 +1151,9 @@ bool Oracle::FreezeUnit(Lit unit) {
 	size_t confl = Propagate(1);
 	if (confl) {
 		unsat = true;
+		return false;
 	}
-	return confl == 0;
+	return true;
 }
 
 void Oracle::AddClause(const vector<Lit>& clause, bool entailed) {
