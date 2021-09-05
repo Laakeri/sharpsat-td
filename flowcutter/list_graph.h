@@ -4,6 +4,7 @@
 #include "array_id_func.h"
 
 #include <tuple>
+#include <string>
 
 struct ListGraph{
 	ListGraph()=default;
