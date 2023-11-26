@@ -7,7 +7,8 @@ SharpSAT-TD is based on [SharpSAT](https://github.com/marcthurley/sharpSAT), wit
 
 
 SharpSAT-TD supports exact model counting, exact weighted model counting with arbitrary precision floats, and exact weighted model counting with doubles.
-See a detailed description in [description.pdf](https://github.com/Laakeri/sharpsat-td/blob/main/description.pdf).
+See a detailed descriptions in [description.pdf](https://github.com/Laakeri/sharpsat-td/blob/main/description.pdf) and in [arXiv](https://arxiv.org/abs/2308.15819).
+If you use SharpSAT-TD in a research paper, please cite at least one of [(Korhonen and Järvisalo, CP 2021)](https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.CP.2021.8) or [(Korhonen and Järvisalo, arXiv 2023)](https://arxiv.org/abs/2308.15819).
 
 
 # Compiling
