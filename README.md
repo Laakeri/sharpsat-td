@@ -28,7 +28,7 @@ The binaries sharpSAT and flow_cutter_pace17 will be copied to the [bin/](https:
 
 # Running
 
-The currently supported input/output formats are those of [Model counting competition 2021](https://mccompetition.org/assets/files/2021/competition2021.pdf).
+The currently supported input/output formats are those of [Model counting competition 2021](https://mccompetition.org/assets/files/2021/competition2021.pdf). Note that in the weighted model counting format, it is assumed that the weight of a literal and its negation sum up to exactly 1. SharpSAT-TD uses this assumption, although editing the input reading logic should be relatively straightforward by editing preprocessor/instance.cpp.
 
 
 Example unweighted model counting:
@@ -41,11 +41,6 @@ Example weighted model counting with arbitrary precision:
 `./sharpSAT -WE -decot 1 -decow 100 -tmpdir . -cs 3500 -prec 20 ../examples/track2_003.wcnf`
 
 
-Example weighted model counting with double precision:
-`cd bin`
-`./sharpSAT -WD -decot 1 -decow 100 -tmpdir . -cs 3500 ../examples/track2_003.wcnf`
-
-
 In the competition setting the value of the `-decot` flag was 120.
 
 ## Flags
@@ -55,5 +50,5 @@ In the competition setting the value of the `-decot` flag was 120.
 - `-decow` - the weight of the tree decomposition in the decision heuristic. Recommended value >1 if the heuristic should care about the tree decomposition.
 - `-cs` - limit of the cache size. If the memory upper bound is X megabytes, then the value here should be around x/2-500.
 - `-WE` - enable weighted model counting with arbitrary precision.
-- `-WD` - enable weighted model counting with double precision.
+- `-WD` - enable weighted model counting with double precision. WARNING: With this flag there may be large errors in the output.
 - `-prec` - the number of digits in output of weighted model counting. Does not affect the internal precision.
