@@ -23,6 +23,19 @@ vector<string> Tokens(string t) {
 	if (ret.back().empty()) ret.pop_back();
 	return ret;
 }
+
+double ParseWeight(string t) {
+	std::string::size_type p = t.find('/');
+	if (std::string::npos == p) {
+		return stod(t);
+	} else {
+		assert(p>0 && p+1 < t.size());
+		double numer = stod(t.substr(0, p));
+		double denom = stod(t.substr(p+1));
+		assert(denom != 0);
+		return numer/denom;
+	}
+}
 } // namespace
 
 Var Instance::AddVar() {
@@ -102,6 +115,7 @@ Instance::Instance(string input_file, bool weighted_) {
 	int read_clauses = 0;
 	int format = 0;
 	int read_weights = 0;
+	bool neg_weights_read = false;
 	while (std::getline(in, tmp)) {
 		if (tmp.empty()) continue;
 		auto tokens = Tokens(tmp);
@@ -110,13 +124,34 @@ Instance::Instance(string input_file, bool weighted_) {
 		} else if (weighted && format == 1 && tokens.size() == 6 && tokens[0] == "c" && tokens[1] == "p" && tokens[2] == "weight") {
 			assert(IsInt(tokens[3], -vars, vars));
 			int dlit = stoi(tokens[3]);
-			double w = stod(tokens[4]);
+			double w = ParseWeight(tokens[4]);
 			assert(dlit != 0);
 			Lit lit = FromDimacs(dlit);
+			if (weight_read[lit]) {
+				cout<<"c o WARNING: Two weights given for the literal "<<dlit<<endl;
+			}
+			if (w < 0 && !neg_weights_read) {
+				neg_weights_read = true;
+				cout<<"c o Note: A negative weight detected (which is fine)"<<endl;
+			}
+			if (w == 0) {
+				cout<<"c o WARNING: Weight of "<<dlit<<" equal to 0"<<endl;
+			}
 			weights[lit] = w;
-			weights[Neg(lit)] = (double)1-w;
+			weight_read[lit] = 1;
 			read_weights++;
 		} else if (tokens[0] == "c") {
+			if (tokens.size() == 3 && tokens[1] == "t") {
+				if (!weighted && tokens[2] != "mc") {
+					cout<<"ERROR: Unweighted model counting mode, but read a line saying "<<tmp<<", see https://mccompetition.org/assets/files/mccomp_format_24.pdf"<<endl;
+					cerr<<"ERROR: Unweighted model counting mode, but read a line saying "<<tmp<<", see https://mccompetition.org/assets/files/mccomp_format_24.pdf"<<endl;
+					assert(0);
+				} else if (weighted && tokens[2] != "wmc") {
+					cout<<"ERROR: Weighted model counting mode, but read a line saying "<<tmp<<", see https://mccompetition.org/assets/files/mccomp_format_24.pdf"<<endl;
+					cerr<<"ERROR: Weighted model counting mode, but read a line saying "<<tmp<<", see https://mccompetition.org/assets/files/mccomp_format_24.pdf"<<endl;
+					assert(0);
+				}
+			}
 			continue;
 		} else if (format == 0 && tokens.size() == 4 && tokens[0] == "p" && tokens[1] == "cnf") {
 			format = 1;
@@ -124,8 +159,10 @@ Instance::Instance(string input_file, bool weighted_) {
 			pline_clauses = stoi(tokens[3]);
 			if (weighted) {
 				weights.resize(vars*2+2);
+				weight_read.resize(vars*2+2);
 				for (int i = 0; i < (int)vars*2+2; i++) {
 					weights[i] = 1;
+					weight_read[i] = 0;
 				}
 			}
 		} else if (format == 1 && IsInt(tokens[0])) {
@@ -144,17 +181,38 @@ Instance::Instance(string input_file, bool weighted_) {
 		}
 	}
 	if (weighted) {
-		for (int v = 1; v <= vars; v++) {
-			if (weights[PosLit(v)] == 0) {
-				AddClause({NegLit(v)});
+		for (Lit lit = 2; lit <= vars*2+1; lit++) {
+			if (!weight_read[lit] && !weight_read[Neg(lit)]) {
+				cout<<"c o WARNING: No weight given for neither "<<ToDimacs(lit)<<" nor "<<ToDimacs(Neg(lit))<<". Assuming both 1."<<endl;
+				weights[lit] = 1;
+				weights[Neg(lit)] = 1;
+				weight_read[lit] = 1;
+				weight_read[Neg(lit)] = 1;
 			}
-			if (weights[NegLit(v)] == 0) {
-				AddClause({PosLit(v)});
+			if (!weight_read[lit] && weight_read[Neg(lit)] && weights[Neg(lit)] >= 0 && weights[Neg(lit)] <= 1) {
+				cout<<"c o WARNING: No weight given for "<<ToDimacs(lit)<<". Assuming it is "<<(double)1-weights[Neg(lit)]<<"."<<endl;
+				weights[lit] = (double)1-weights[Neg(lit)];
+				weight_read[lit] = 1;
+			}
+			if (!weight_read[lit]) {
+				cout<<"ERROR: No weight given for "<<ToDimacs(lit)<<", and could not infer it."<<endl;
+				cerr<<"ERROR: No weight given for "<<ToDimacs(lit)<<", and could not infer it."<<endl;
+				assert(0);
+			}
+			if (weights[lit] == 0) {
+				AddClause({Neg(lit)});
 			}
 		}
 	}
 	assert(format == 1);
 	assert(cur_clause.empty());
+	cout<<"c o This output describes a result of a run from"<<endl;
+	if (!weighted) {
+		cout<<"c o a model counter."<<endl;
+	} else {
+		cout<<"c o a weighted model counter."<<endl;
+	}
+	cout<<"c o "<<endl;
 	if (pline_clauses != read_clauses) {
 		cout<<"c o Warning: p line mismatch. Claimed clauses: "<<pline_clauses<<" actual clauses: "<<read_clauses<<endl;
 	}

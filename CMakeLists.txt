@@ -24,6 +24,7 @@ find_library(GMP_LIB gmp)
 find_library(GMPXX_LIB gmpxx)
 find_library(MPFR_LIB mpfr)
 
+add_definitions( -DMPFR_USE_NO_MACRO )
 add_subdirectory(flowcutter)
 
 SET(SOURCES 

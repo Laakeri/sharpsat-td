@@ -49,15 +49,27 @@ mpfr::mpreal Log10(const mpz_class& num) {
 }
 
 void PrintLog10(const mpz_class& num) {
-  cout<<"c s log10-estimate "<<Log10(num)<<endl;
+  if (num >= 0) {
+    cout<<"c s log10-estimate "<<Log10(num)<<endl;
+  } else {
+    cout<<"c s neglog10-estimate "<<Log10(-num)<<endl;
+  }
 }
 
-void PrintLog10(double num, double logwf) {
-  cout<<"c s log10-estimate "<<log10(num)+logwf<<endl;
+void PrintLog10(double num) {
+  if (num >= 0) {
+    cout<<"c s log10-estimate "<<log10(num)<<endl;
+  } else {
+    cout<<"c s neglog10-estimate "<<log10(-num)<<endl;
+  }
 }
 
 void PrintLog10(const mpfr::mpreal& num) {
-  cout<<"c s log10-estimate "<<mpfr::log10(num)<<endl;
+  if (num >= 0) {
+    cout<<"c s log10-estimate "<<mpfr::log10(num)<<endl;
+  } else {
+    cout<<"c s neglog10-estimate "<<mpfr::log10(-num)<<endl;
+  }
 }
 
 void PrintExact(const mpz_class& num) {
@@ -190,7 +202,7 @@ int main(int argc, char *argv[]) {
       theSolver.statistics().maximum_cache_size_bytes_ = max_cache;
     }
     mpz_class ans = theSolver.solve(ins, tdecomp).Get();
-    cout<<"c o Solved. "<<glob_timer.get()<<endl;
+    cout<<"c o Solved in "<<glob_timer.get()<<" seconds."<<endl;
     ans *= ans0;
     PrintSat(true);
     PrintType(ins);
@@ -199,6 +211,9 @@ int main(int argc, char *argv[]) {
     return 0;
   } else if (weighted == 1 || weighted == 2) {
     sspp::Instance ins(input_file, true);
+    if (weighted == 1) {
+      cout<<"c o WARNING: Using doubles for weighted model counting, which can sometimes cause significant error. The flag -WE enabling weighted model counting with arbitrary precision is preferred."<<endl;
+    }
     sspp::Preprocessor ppp;
     ins = ppp.Preprocess(ins, "FPVE");
     ins.UpdClauseInfo();
@@ -229,10 +244,10 @@ int main(int argc, char *argv[]) {
         theSolver.statistics().maximum_cache_size_bytes_ = max_cache;
       }
       double ans1 = theSolver.solve(ins, tdecomp).Get();
-      cout<<"c o Solved. "<<glob_timer.get()<<endl;
+      cout<<"c o Solved in "<<glob_timer.get()<<" seconds."<<endl;
       PrintSat(true);
       PrintType(ins);
-      PrintLog10(ans1, (double)mpfr::log10(ans0));
+      PrintLog10(ans1*(double)ans0);
       PrintDouble(ans1*(double)ans0);
     } else {
       Solver<Smpr> theSolver(gen);
@@ -241,7 +256,7 @@ int main(int argc, char *argv[]) {
         theSolver.statistics().maximum_cache_size_bytes_ = max_cache;
       }
       mpfr::mpreal ans1 = theSolver.solve(ins, tdecomp).Get();
-      cout<<"c o Solved. "<<glob_timer.get()<<endl;
+      cout<<"c o Solved in "<<glob_timer.get()<<" seconds."<<endl;
       PrintSat(true);
       PrintType(ins);
       PrintLog10(ans1*ans0);
