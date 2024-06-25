@@ -28,7 +28,7 @@ The binaries sharpSAT and flow_cutter_pace17 will be copied to the [bin/](https:
 
 # Running
 
-The currently supported input/output formats are those of [Model counting competition 2021](https://mccompetition.org/assets/files/2021/competition2021.pdf). Note that in the weighted model counting format, it is assumed that the weight of a literal and its negation sum up to exactly 1. SharpSAT-TD uses this assumption, although editing the input reading logic should be relatively straightforward by editing preprocessor/instance.cpp.
+The currently supported input/output formats are those of [Model counting competition 2024](https://mccompetition.org/assets/files/mccomp_format_24.pdf).
 
 
 Example unweighted model counting:
